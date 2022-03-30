@@ -82,6 +82,8 @@ export default class SharedElementRendererData
   private transitionNavigatorId: string = "";
   private transitionNestingDepth: number = -1;
 
+  private isGesture: boolean = false;
+
   public debugRefCount: number = 0;
 
   startTransition(closing: boolean, navigatorId: string, nestingDepth: number) {
@@ -136,12 +138,14 @@ export default class SharedElementRendererData
 
     this.isTransitionStarted = false;
 
-    if (this.prevRoute != null) {
+    if (this.prevRoute != null && !this.isGesture) {
       this.prevRoute = null;
       this.routeAnimValue = null;
       this.updateSceneListeners();
       this.updateSharedElements();
     }
+
+    this.isGesture = false;
   }
 
   updateSceneState(
@@ -151,6 +155,8 @@ export default class SharedElementRendererData
     switch (eventType) {
       case "willFocus":
         return this.willFocusScene(scene);
+      case "willFocusGesture":
+        return this.willFocusGestureScene(scene);
       case "didFocus":
         return this.didFocusScene(scene);
       /*case "willBlur":
@@ -186,6 +192,59 @@ export default class SharedElementRendererData
       const routeScene = this.isTransitionClosing
         ? this.getScene(this.prevRoute)
         : scene;
+
+      if (routeScene?.navigatorId === this.transitionNavigatorId) {
+        this.routeAnimValue = routeScene?.getAnimValue(
+          this.isTransitionClosing
+        );
+      }
+    }
+
+    // In case of nested navigators, multiple scenes will become
+    // activated. Make sure to use the scene that is nested most deeply,
+    // as this will be the one visible to the user
+    if (!this.route) {
+      this.route = scene.route;
+    } else {
+      const routeScene = this.getScene(this.route);
+      if (routeScene && routeScene.nestingDepth <= scene.nestingDepth) {
+        this.route = scene.route;
+      }
+    }
+
+    // Update transition
+    if (this.prevRoute && this.route && this.routeAnimValue) {
+      this.updateSceneListeners();
+      this.updateSharedElements();
+    }
+  }
+
+  willFocusGestureScene(scene: SharedElementSceneData): void {
+    this.isGesture = true;
+    if (this.debug)
+      console.debug(
+        `[${scene.navigatorId}]willFocusGesture, scene: "${scene.name}", depth: ${scene.nestingDepth}, closing: ${this.isTransitionClosing}`
+      );
+    this.registerScene(scene);
+
+    //is this right? will the back screen always be the first screen that without the same name?
+    for (var i = this.scenes.length - 1; i > 0; i--) {
+      if (scene.name !== this.scenes[i].scene.name) {
+        scene = this.scenes[i].scene;
+        break;
+      }
+    }
+
+    // Wait for a transition start, before starting any animations
+    if (!this.isTransitionStarted) return;
+
+    // Use the animation value from the navigator that
+    // started the transition
+    if (this.prevRoute) {
+      const routeScene = this.isTransitionClosing
+        ? this.getScene(this.prevRoute)
+        : scene;
+
       if (routeScene?.navigatorId === this.transitionNavigatorId) {
         this.routeAnimValue = routeScene?.getAnimValue(
           this.isTransitionClosing

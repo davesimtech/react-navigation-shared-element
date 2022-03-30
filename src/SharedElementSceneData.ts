@@ -25,9 +25,11 @@ const INVERT_OPTIONS = {
 
 export type SharedElementSceneEventType =
   | "willFocus"
+  | "willFocusGesture"
   | "didFocus"
   | "willBlur"
-  | "didBlur";
+  | "didBlur"
+  | 'endGesture';
 
 export default class SharedElementSceneData {
   private updateSubscribers = new Set<SharedElementSceneUpdateHandler>();

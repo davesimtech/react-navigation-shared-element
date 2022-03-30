@@ -105,6 +105,11 @@ function createSharedElementScene(
           "transitionEnd",
           this.onTransitionEnd
         ),
+        gestureStart: navigation.addListener(
+          "gestureStart",
+          this.onGestureStart
+        ),
+        gestureEnd: navigation.addListener("gestureEnd", this.onGestureEnd),
       };
     }
 
@@ -124,6 +129,19 @@ function createSharedElementScene(
         navigatorId,
         rendererData.nestingDepth
       );
+    };
+
+    private onGestureStart = (event: any) => {
+      rendererData.startTransition(
+        true,
+        navigatorId,
+        rendererData.nestingDepth
+      );
+      rendererData.updateSceneState(this.sceneData, "willFocusGesture");
+    };
+
+    private onGestureEnd = () => {
+      rendererData.updateSceneState(this.sceneData, "endGesture");
     };
 
     componentWillUnmount() {
